@@ -78,7 +78,7 @@ function SentPage() {
         key: regenKey,
         plaintext: regenPlain,
         payloadB64,
-        recipientCode: regenFor.recipient_code,
+        recipientCode: regenFor.recipient_code ?? undefined,
         createdAt: regenFor.created_at,
       });
       stashEncryptReport(regenFor.id, report);
