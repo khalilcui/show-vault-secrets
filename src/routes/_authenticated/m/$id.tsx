@@ -195,7 +195,12 @@ function OpenMessagePage() {
 
                   {plainText !== null && (
                     <div className="space-y-2">
-                      <Label>Decrypted message</Label>
+                      <div className="flex items-center justify-between">
+                        <Label>Decrypted message</Label>
+                        <Button size="sm" variant="outline" onClick={handleDownloadReport}>
+                          <Download className="w-4 h-4 mr-2" /> Steps
+                        </Button>
+                      </div>
                       <div className="rounded-md border border-primary/30 bg-primary/5 p-4 whitespace-pre-wrap font-mono text-sm">
                         {plainText || <span className="text-muted-foreground italic">(empty)</span>}
                       </div>
@@ -219,10 +224,10 @@ function OpenMessagePage() {
                 </div>
               </Panel>
 
-              <Panel title={<span className="flex items-center gap-2"><ListChecks className="w-4 h-4" />Decryption trace</span>}>
+              <Panel title={<span className="flex items-center gap-2"><ListChecks className="w-4 h-4" />Decryption steps</span>}>
                 {steps.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    Each step of the decryption will appear here once you decrypt — useful for learning what {ALGO_LABEL[algo]} actually does.
+                    Steps appear here after you decrypt.
                   </p>
                 ) : (
                   <ol className="space-y-3">
