@@ -16,6 +16,7 @@ import {
   type AlgoId, type TraceStep,
 } from "@/lib/trace";
 import { downloadBlob } from "@/lib/crypto";
+import { buildDecryptReport, stashDecryptReport, downloadReport } from "@/lib/trace-report";
 import { getMessage, markMessageOpened } from "@/lib/shares.functions";
 
 export const Route = createFileRoute("/_authenticated/m/$id")({
@@ -83,6 +84,19 @@ function OpenMessagePage() {
         toast.success("Decrypted — ready to download");
       } else {
         setPlainText(text ?? "");
+        // Build & stash the per-message decryption report (text only).
+        try {
+          const report = await buildDecryptReport({
+            messageId: msg.id,
+            algo: msg.algorithm as AlgoId,
+            key,
+            payloadB64: msg.payload_b64,
+            plaintext: text ?? "",
+            senderEmail: msg.sender_email,
+            createdAt: msg.created_at,
+          });
+          stashDecryptReport(msg.id, report);
+        } catch { /* ignore report errors */ }
         toast.success("Decrypted!");
       }
     } catch (err) {
@@ -90,6 +104,20 @@ function OpenMessagePage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function handleDownloadReport() {
+    if (!msg || plainText === null) return;
+    // Rebuild fresh in case key changed.
+    buildDecryptReport({
+      messageId: msg.id,
+      algo: msg.algorithm as AlgoId,
+      key,
+      payloadB64: msg.payload_b64,
+      plaintext: plainText,
+      senderEmail: msg.sender_email,
+      createdAt: msg.created_at,
+    }).then((r) => downloadReport(msg.id, "decrypt", r));
   }
 
   if (loading) {
