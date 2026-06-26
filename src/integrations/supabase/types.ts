@@ -14,7 +14,111 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string
+          id: string
+          user_code: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email: string
+          id: string
+          user_code: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string
+          id?: string
+          user_code?: string
+        }
+        Relationships: []
+      }
+      shared_messages: {
+        Row: {
+          algorithm: string
+          code: string
+          created_at: string
+          file_mime: string | null
+          file_name: string | null
+          hint: string | null
+          id: string
+          is_file: boolean
+          opened_at: string | null
+          payload_b64: string
+          recipient_code: string | null
+          recipient_id: string | null
+          sender_email: string
+          sender_id: string
+        }
+        Insert: {
+          algorithm: string
+          code: string
+          created_at?: string
+          file_mime?: string | null
+          file_name?: string | null
+          hint?: string | null
+          id?: string
+          is_file?: boolean
+          opened_at?: string | null
+          payload_b64: string
+          recipient_code?: string | null
+          recipient_id?: string | null
+          sender_email: string
+          sender_id: string
+        }
+        Update: {
+          algorithm?: string
+          code?: string
+          created_at?: string
+          file_mime?: string | null
+          file_name?: string | null
+          hint?: string | null
+          id?: string
+          is_file?: boolean
+          opened_at?: string | null
+          payload_b64?: string
+          recipient_code?: string | null
+          recipient_id?: string | null
+          sender_email?: string
+          sender_id?: string
+        }
+        Relationships: []
+      }
+      signup_otps: {
+        Row: {
+          attempts: number
+          code_hash: string
+          created_at: string
+          display_name: string | null
+          email: string
+          expires_at: string
+          password_hash: string
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          created_at?: string
+          display_name?: string | null
+          email: string
+          expires_at: string
+          password_hash: string
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          created_at?: string
+          display_name?: string | null
+          email?: string
+          expires_at?: string
+          password_hash?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
