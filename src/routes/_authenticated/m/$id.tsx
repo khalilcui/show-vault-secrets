@@ -16,6 +16,7 @@ import {
   type AlgoId, type TraceStep,
 } from "@/lib/trace";
 import { downloadBlob } from "@/lib/crypto";
+import { buildDecryptReport, stashDecryptReport, downloadReport } from "@/lib/trace-report";
 import { getMessage, markMessageOpened } from "@/lib/shares.functions";
 
 export const Route = createFileRoute("/_authenticated/m/$id")({
@@ -83,6 +84,19 @@ function OpenMessagePage() {
         toast.success("Decrypted — ready to download");
       } else {
         setPlainText(text ?? "");
+        // Build & stash the per-message decryption report (text only).
+        try {
+          const report = await buildDecryptReport({
+            messageId: msg.id,
+            algo: msg.algorithm as AlgoId,
+            key,
+            payloadB64: msg.payload_b64,
+            plaintext: text ?? "",
+            senderEmail: msg.sender_email,
+            createdAt: msg.created_at,
+          });
+          stashDecryptReport(msg.id, report);
+        } catch { /* ignore report errors */ }
         toast.success("Decrypted!");
       }
     } catch (err) {
@@ -90,6 +104,20 @@ function OpenMessagePage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function handleDownloadReport() {
+    if (!msg || plainText === null) return;
+    // Rebuild fresh in case key changed.
+    buildDecryptReport({
+      messageId: msg.id,
+      algo: msg.algorithm as AlgoId,
+      key,
+      payloadB64: msg.payload_b64,
+      plaintext: plainText,
+      senderEmail: msg.sender_email,
+      createdAt: msg.created_at,
+    }).then((r) => downloadReport(msg.id, "decrypt", r));
   }
 
   if (loading) {
@@ -167,7 +195,12 @@ function OpenMessagePage() {
 
                   {plainText !== null && (
                     <div className="space-y-2">
-                      <Label>Decrypted message</Label>
+                      <div className="flex items-center justify-between">
+                        <Label>Decrypted message</Label>
+                        <Button size="sm" variant="outline" onClick={handleDownloadReport}>
+                          <Download className="w-4 h-4 mr-2" /> Steps
+                        </Button>
+                      </div>
                       <div className="rounded-md border border-primary/30 bg-primary/5 p-4 whitespace-pre-wrap font-mono text-sm">
                         {plainText || <span className="text-muted-foreground italic">(empty)</span>}
                       </div>
@@ -191,10 +224,10 @@ function OpenMessagePage() {
                 </div>
               </Panel>
 
-              <Panel title={<span className="flex items-center gap-2"><ListChecks className="w-4 h-4" />Decryption trace</span>}>
+              <Panel title={<span className="flex items-center gap-2"><ListChecks className="w-4 h-4" />Decryption steps</span>}>
                 {steps.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    Each step of the decryption will appear here once you decrypt — useful for learning what {ALGO_LABEL[algo]} actually does.
+                    Steps appear here after you decrypt.
                   </p>
                 ) : (
                   <ol className="space-y-3">
