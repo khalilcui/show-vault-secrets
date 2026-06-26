@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  Send, FileUp, Type, Loader2, Lightbulb, Sparkles, ListChecks, UserCheck, ArrowRight, ShieldCheck,
+  Send, FileUp, Type, Loader2, Sparkles, ListChecks, UserCheck, ArrowRight, Download,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/AppShell";
 import { Panel } from "@/components/Panel";
@@ -18,12 +18,13 @@ import {
   type AlgoId, type TraceStep,
 } from "@/lib/trace";
 import { findUserByCode, sendToUser } from "@/lib/shares.functions";
+import { buildEncryptReport, stashEncryptReport, downloadReport } from "@/lib/trace-report";
 
 export const Route = createFileRoute("/_authenticated/send")({
   head: () => ({
     meta: [
       { title: "Send encrypted — SecureVault" },
-      { name: "description", content: "Address an encrypted message to another user's ID. Watch each encryption step as it runs." },
+      { name: "description", content: "Encrypt a message and send it to another user's ID." },
     ],
   }),
   component: SendPage,
@@ -45,12 +46,10 @@ type Recipient = { id: string; user_code: string; display_name: string | null; e
 function SendPage() {
   const navigate = useNavigate();
 
-  // recipient lookup
   const [recipientCode, setRecipientCode] = useState("");
   const [recipient, setRecipient] = useState<Recipient | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
 
-  // encryption inputs
   const [algo, setAlgo] = useState<AlgoId>("aes-gcm-256");
   const [mode, setMode] = useState<"text" | "file">("text");
   const [text, setText] = useState("");
@@ -59,6 +58,7 @@ function SendPage() {
   const [hint, setHint] = useState("");
   const [busy, setBusy] = useState(false);
   const [steps, setSteps] = useState<TraceStep[]>([]);
+  const [lastSent, setLastSent] = useState<{ id: string; report: string } | null>(null);
 
   const lookup = useServerFn(findUserByCode);
   const send = useServerFn(sendToUser);
@@ -76,7 +76,7 @@ function SendPage() {
         toast.error(`No user found with ID "${code}"`);
       } else {
         setRecipient(found);
-        toast.success(`Found user ${found.user_code}`);
+        toast.success(`Found ${found.user_code}`);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Lookup failed");
@@ -93,6 +93,7 @@ function SendPage() {
 
     setBusy(true);
     setSteps([]);
+    setLastSent(null);
     try {
       const isFile = mode === "file";
       const data: ArrayBuffer = isFile
@@ -114,13 +115,25 @@ function SendPage() {
         },
       });
 
+      // Build & stash the per-message encryption report (text mode only).
+      if (!isFile) {
+        const report = await buildEncryptReport({
+          messageId: row.id,
+          algo,
+          key,
+          plaintext: text,
+          payloadB64,
+          recipientCode: recipient.user_code,
+          createdAt: row.created_at,
+        });
+        stashEncryptReport(row.id, report);
+        setLastSent({ id: row.id, report });
+      }
+
       toast.success(`Sent to ${recipient.user_code}`);
-      // jump to outbox so the user sees their sent message
-      setTimeout(() => navigate({ to: "/sent" }), 600);
-      // reset payload but keep the trace visible so the user can study it
       setText("");
       setFile(null);
-      void row;
+      setTimeout(() => navigate({ to: "/sent" }), 1200);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Send failed");
     } finally {
@@ -133,13 +146,13 @@ function SendPage() {
       <div className="max-w-6xl mx-auto p-8">
         <PageHeader
           title="Send Encrypted Message"
-          subtitle="Encrypt in your browser and deliver it directly to another user's ID. Only they can read it."
+          subtitle="Encrypted in your browser. Only the recipient can read it."
           icon={Send}
         />
 
         <div className="grid lg:grid-cols-[1fr_360px] gap-6">
           <div className="space-y-6">
-            <Panel title="1. Who's the recipient?">
+            <Panel title="1. Recipient">
               <div className="space-y-3">
                 <Label htmlFor="rcpt">Recipient's User ID</Label>
                 <div className="flex gap-2">
@@ -166,13 +179,10 @@ function SendPage() {
                     </div>
                   </div>
                 )}
-                <p className="text-xs text-muted-foreground">
-                  The recipient must already have a SecureVault account. Their User ID appears in their sidebar and dashboard.
-                </p>
               </div>
             </Panel>
 
-            <Panel title="2. Pick an algorithm">
+            <Panel title="2. Algorithm">
               <div className="space-y-3">
                 <Select value={algo} onValueChange={(v) => setAlgo(v as AlgoId)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -180,47 +190,34 @@ function SendPage() {
                     {ALGOS.map((a) => <SelectItem key={a} value={a}>{ALGO_LABEL[a]}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <div className="flex gap-2 items-start text-sm text-muted-foreground border border-border rounded-md p-3 bg-secondary/30">
-                  <Lightbulb className="w-4 h-4 mt-0.5 text-primary shrink-0" />
-                  <p>{description}</p>
-                </div>
+                <p className="text-xs text-muted-foreground">{description}</p>
               </div>
             </Panel>
 
-            <Panel title="3. What do you want to send?">
+            <Panel title="3. Payload">
               <Tabs value={mode} onValueChange={(v) => setMode(v as "text" | "file")}>
                 <TabsList>
                   <TabsTrigger value="text"><Type className="w-4 h-4 mr-2" />Text</TabsTrigger>
                   <TabsTrigger value="file"><FileUp className="w-4 h-4 mr-2" />File</TabsTrigger>
                 </TabsList>
                 <TabsContent value="text" className="mt-4">
-                  <Textarea rows={8} placeholder="Type your secret message…" value={text} onChange={(e) => setText(e.target.value)} />
+                  <Textarea rows={6} placeholder="Type your secret message…" value={text} onChange={(e) => setText(e.target.value)} />
                 </TabsContent>
                 <TabsContent value="file" className="mt-4 space-y-2">
                   <Input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
                   {file && <p className="text-xs text-muted-foreground">{file.name} — {(file.size / 1024).toFixed(1)} KB</p>}
-                  {(algo === "caesar" || algo === "vigenere" || algo === "playfair" || algo === "hill") && file && (
-                    <p className="text-xs text-yellow-500/80">
-                      Classical ciphers work on letters only — file bytes will be base64-encoded before encrypting (expect a much larger payload).
-                    </p>
-                  )}
                 </TabsContent>
               </Tabs>
             </Panel>
 
-            <Panel title="4. Decryption key">
+            <Panel title="4. Key">
               <div className="space-y-3">
-                <Label htmlFor="key">Key (the recipient will need this!)</Label>
                 <Input
                   id="key" value={key} onChange={(e) => setKey(e.target.value)}
                   placeholder={keyPlaceholder(algo)}
                   type={NEEDS_BINARY_KEY[algo] === "password" ? "password" : "text"}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Tell the recipient this key through a separate channel (chat, in person, phone). Without it, even the recipient can't decrypt the message.
-                </p>
-                <Label htmlFor="hint">Hint for the recipient (optional)</Label>
-                <Input id="hint" value={hint} onChange={(e) => setHint(e.target.value)} placeholder='e.g. "our cafe street name"' maxLength={280} />
+                <Input value={hint} onChange={(e) => setHint(e.target.value)} placeholder='Optional hint, e.g. "cafe street name"' maxLength={280} />
               </div>
             </Panel>
 
@@ -229,22 +226,28 @@ function SendPage() {
               Encrypt & send to {recipient ? recipient.user_code : "recipient"}
               {!busy && <ArrowRight className="w-4 h-4 ml-2" />}
             </Button>
+
+            {lastSent && (
+              <Panel title="Encryption report ready">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <p className="text-sm text-muted-foreground">
+                    Step-by-step report for this exact message — only you can download it.
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() => downloadReport(lastSent.id, "encrypt", lastSent.report)}
+                  >
+                    <Download className="w-4 h-4 mr-2" /> Download .txt
+                  </Button>
+                </div>
+              </Panel>
+            )}
           </div>
 
           <div className="space-y-6">
-            <Panel title={<span className="flex items-center gap-2"><ShieldCheck className="w-4 h-4" /> Privacy</span>}>
-              <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-4">
-                <li>Your message is encrypted <span className="text-foreground">in this browser</span> before it ever touches the server.</li>
-                <li>The recipient field is the only person allowed to read it.</li>
-                <li>The server never sees your decryption key.</li>
-              </ul>
-            </Panel>
-
-            <Panel title={<span className="flex items-center gap-2"><ListChecks className="w-4 h-4" /> How it's encrypted</span>}>
+            <Panel title={<span className="flex items-center gap-2"><ListChecks className="w-4 h-4" /> Encryption steps</span>}>
               {steps.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Each step the cipher takes will appear here after you click <span className="text-foreground">Encrypt &amp; send</span>.
-                </p>
+                <p className="text-sm text-muted-foreground">Each step will appear here after you click Encrypt &amp; send.</p>
               ) : (
                 <ol className="space-y-3">
                   {steps.map((s, i) => (
