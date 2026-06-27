@@ -93,7 +93,7 @@ function SentPage() {
 
   return (
     <AppShell>
-      <div className="max-w-5xl mx-auto p-8">
+      <div className="max-w-5xl mx-auto p-4 sm:p-8">
         <PageHeader title="Sent" subtitle="Encrypted messages you've sent." icon={Mail} />
 
         {rows === null ? (

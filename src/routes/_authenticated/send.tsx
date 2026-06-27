@@ -143,7 +143,7 @@ function SendPage() {
 
   return (
     <AppShell>
-      <div className="max-w-6xl mx-auto p-8">
+      <div className="max-w-6xl mx-auto p-4 sm:p-8">
         <PageHeader
           title="Send Encrypted Message"
           subtitle="Encrypted in your browser. Only the recipient can read it."

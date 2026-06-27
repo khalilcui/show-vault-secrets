@@ -32,7 +32,7 @@ function InboxPage() {
 
   return (
     <AppShell>
-      <div className="max-w-5xl mx-auto p-8">
+      <div className="max-w-5xl mx-auto p-4 sm:p-8">
         <PageHeader title="Inbox" subtitle="Encrypted messages sent to your User ID." icon={Inbox} />
 
         {rows === null ? (
