@@ -57,8 +57,6 @@ export const findUserByCode = createServerFn({ method: "POST" })
   });
 
 
-}
-
 // ---------- send: address an encrypted payload to a specific user ----------
 export const sendToUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
