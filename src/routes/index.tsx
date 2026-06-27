@@ -29,7 +29,7 @@ function Index() {
 
   return (
     <AppShell>
-      <div className="p-8 max-w-6xl mx-auto">
+      <div className="p-4 sm:p-8 max-w-6xl mx-auto">
         <PageHeader
           title="Welcome to SecureVault"
           subtitle="Send encrypted messages directly to another user's ID — and learn how each cipher works as it runs."

@@ -151,7 +151,7 @@ function OpenMessagePage() {
 
   return (
     <AppShell>
-      <div className="max-w-5xl mx-auto p-8">
+      <div className="max-w-5xl mx-auto p-4 sm:p-8">
         <Link to="/inbox" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center mb-4">
           <ArrowLeft className="w-4 h-4 mr-1" /> Back to inbox
         </Link>
