@@ -56,13 +56,7 @@ export const findUserByCode = createServerFn({ method: "POST" })
     };
   });
 
-function maskEmail(email: string): string {
-  const [user, domain] = email.split("@");
-  if (!user || !domain) return "***";
-  const u = user.length <= 2 ? user[0] + "*" : user[0] + "***" + user[user.length - 1];
-  const [dName, ...rest] = domain.split(".");
-  const d = (dName?.[0] ?? "*") + "***";
-  return `${u}@${d}${rest.length ? "." + rest.join(".") : ""}`;
+
 }
 
 // ---------- send: address an encrypted payload to a specific user ----------
