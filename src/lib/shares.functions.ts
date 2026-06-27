@@ -38,24 +38,21 @@ export const getMyProfile = createServerFn({ method: "GET" })
   });
 
 // ---------- look up a recipient by their User ID ----------
+// Uses a SECURITY DEFINER RPC so we never expose other users' emails via the profiles table.
 export const findUserByCode = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ userCode: userCodeSchema }).parse(input))
   .handler(async ({ data, context }) => {
-    const { data: row, error } = await context.supabase
-      .from("profiles")
-      .select("id, display_name, user_code, email")
-      .eq("user_code", data.userCode)
-      .maybeSingle();
+    const { data: rows, error } = await context.supabase
+      .rpc("find_profile_by_code", { _code: data.userCode });
     if (error) throw new Error(error.message);
+    const row = Array.isArray(rows) ? rows[0] : rows;
     if (!row) return null;
-    // Don't leak email of arbitrary users; only return what's needed for confirmation
     return {
       id: row.id,
       user_code: row.user_code,
       display_name: row.display_name,
-      // mask the email: a***@d***.com
-      email_masked: maskEmail(row.email),
+      email_masked: null as string | null,
     };
   });
 
