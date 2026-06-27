@@ -124,7 +124,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      find_profile_by_code: {
+        Args: { _code: string }
+        Returns: {
+          display_name: string
+          id: string
+          user_code: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
