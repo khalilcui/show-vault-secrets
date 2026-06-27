@@ -76,12 +76,10 @@ export const sendToUser = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId, claims } = context;
 
-    const { data: recipient, error: recErr } = await supabase
-      .from("profiles")
-      .select("id, user_code, display_name")
-      .eq("user_code", data.recipientCode)
-      .maybeSingle();
+    const { data: recRows, error: recErr } = await supabase
+      .rpc("find_profile_by_code", { _code: data.recipientCode });
     if (recErr) throw new Error(recErr.message);
+    const recipient = Array.isArray(recRows) ? recRows[0] : recRows;
     if (!recipient) throw new Error(`No user found with ID "${data.recipientCode}". Ask them for their exact User ID.`);
     // Note: self-send is allowed (useful for testing the encryption flow).
 
