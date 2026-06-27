@@ -38,35 +38,24 @@ export const getMyProfile = createServerFn({ method: "GET" })
   });
 
 // ---------- look up a recipient by their User ID ----------
+// Uses a SECURITY DEFINER RPC so we never expose other users' emails via the profiles table.
 export const findUserByCode = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ userCode: userCodeSchema }).parse(input))
   .handler(async ({ data, context }) => {
-    const { data: row, error } = await context.supabase
-      .from("profiles")
-      .select("id, display_name, user_code, email")
-      .eq("user_code", data.userCode)
-      .maybeSingle();
+    const { data: rows, error } = await context.supabase
+      .rpc("find_profile_by_code", { _code: data.userCode });
     if (error) throw new Error(error.message);
+    const row = Array.isArray(rows) ? rows[0] : rows;
     if (!row) return null;
-    // Don't leak email of arbitrary users; only return what's needed for confirmation
     return {
       id: row.id,
       user_code: row.user_code,
       display_name: row.display_name,
-      // mask the email: a***@d***.com
-      email_masked: maskEmail(row.email),
+      email_masked: null as string | null,
     };
   });
 
-function maskEmail(email: string): string {
-  const [user, domain] = email.split("@");
-  if (!user || !domain) return "***";
-  const u = user.length <= 2 ? user[0] + "*" : user[0] + "***" + user[user.length - 1];
-  const [dName, ...rest] = domain.split(".");
-  const d = (dName?.[0] ?? "*") + "***";
-  return `${u}@${d}${rest.length ? "." + rest.join(".") : ""}`;
-}
 
 // ---------- send: address an encrypted payload to a specific user ----------
 export const sendToUser = createServerFn({ method: "POST" })
@@ -87,12 +76,10 @@ export const sendToUser = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId, claims } = context;
 
-    const { data: recipient, error: recErr } = await supabase
-      .from("profiles")
-      .select("id, user_code, display_name")
-      .eq("user_code", data.recipientCode)
-      .maybeSingle();
+    const { data: recRows, error: recErr } = await supabase
+      .rpc("find_profile_by_code", { _code: data.recipientCode });
     if (recErr) throw new Error(recErr.message);
+    const recipient = Array.isArray(recRows) ? recRows[0] : recRows;
     if (!recipient) throw new Error(`No user found with ID "${data.recipientCode}". Ask them for their exact User ID.`);
     // Note: self-send is allowed (useful for testing the encryption flow).
 

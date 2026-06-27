@@ -41,7 +41,7 @@ function keyPlaceholder(algo: AlgoId): string {
   }
 }
 
-type Recipient = { id: string; user_code: string; display_name: string | null; email_masked: string };
+type Recipient = { id: string; user_code: string; display_name: string | null; email_masked: string | null };
 
 function SendPage() {
   const navigate = useNavigate();
@@ -175,7 +175,7 @@ function SendPage() {
                       <div className="text-foreground font-semibold">
                         {recipient.display_name || "User"} · <span className="font-mono text-primary">{recipient.user_code}</span>
                       </div>
-                      <div className="text-xs text-muted-foreground">{recipient.email_masked}</div>
+                      {recipient.email_masked && <div className="text-xs text-muted-foreground">{recipient.email_masked}</div>}
                     </div>
                   </div>
                 )}
