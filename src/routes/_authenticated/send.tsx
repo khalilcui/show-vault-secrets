@@ -41,7 +41,7 @@ function keyPlaceholder(algo: AlgoId): string {
   }
 }
 
-type Recipient = { id: string; user_code: string; display_name: string | null; email_masked: string };
+type Recipient = { id: string; user_code: string; display_name: string | null; email_masked: string | null };
 
 function SendPage() {
   const navigate = useNavigate();
